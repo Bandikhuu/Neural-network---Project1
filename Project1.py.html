@@ -1,0 +1,343 @@
+
+# coding: utf-8
+
+# In[1]:
+
+
+#IMPORTS
+import os,urllib.request
+
+
+# PROVIDE YOUR DOWNLOAD DIRECTORY HERE
+datapath = '../../Data/MNISTData/'  
+
+# CREATING DOWNLOAD DIRECTORY
+if not os.path.exists(datapath):
+    os.makedirs(datapath)
+
+# URLS TO DOWNLOAD FROM
+urls = ['http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz',
+       'http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz',
+       'http://yann.lecun.com/exdb/mnist/t10k-images-idx3-ubyte.gz',
+       'http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz']
+
+for url in urls:
+    filename = url.split('/')[-1]   # GET FILENAME
+    
+    if os.path.exists(datapath+filename):
+        print(filename, ' already exists')  # CHECK IF FILE EXISTS
+    else:
+        print('Downloading ',filename)
+        urllib.request.urlretrieve (url, datapath+filename) # DOWNLOAD FILE
+     
+print('All files are available')
+
+
+# In[2]:
+
+
+import os,gzip,shutil
+
+# PROVIDE YOUR DOWNLOAD DIRECTORY HERE
+datapath = '../../Data/MNISTData/'  
+
+# LISTING ALL ARCHIVES IN THE DIRECTORY
+files = os.listdir(datapath)
+for file in files:
+    if file.endswith('gz'):
+        print('Extracting ',file)
+        with gzip.open(datapath+file, 'rb') as f_in:
+            with open(datapath+file.split('.')[0], 'wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
+print('Extraction Complete')
+
+# OPTIONAL REMOVE THE ARCHIVES
+for file in files:
+    print('Removing ',file)
+    os.remove(datapath+file)
+print ('All archives removed')
+
+
+# In[1]:
+
+
+import os,codecs,numpy
+
+# PROVIDE YOUR DIRECTORY WITH THE EXTRACTED FILES HERE
+datapath = '../../Data/MNISTData/'
+
+files = os.listdir(datapath)
+
+def get_int(b):   # CONVERTS 4 BYTES TO A INT
+    return int(codecs.encode(b, 'hex'), 16)
+
+data_dict = {}
+for file in files:
+    if file.endswith('ubyte'):  # FOR ALL 'ubyte' FILES
+        print('Reading ',file)
+        with open (datapath+file,'rb') as f:
+            data = f.read()
+            type = get_int(data[:4])   # 0-3: THE MAGIC NUMBER TO WHETHER IMAGE OR LABEL
+            length = get_int(data[4:8])  # 4-7: LENGTH OF THE ARRAY  (DIMENSION 0)
+            if (type == 2051):
+                category = 'images'
+                num_rows = get_int(data[8:12])  # NUMBER OF ROWS  (DIMENSION 1)
+                num_cols = get_int(data[12:16])  # NUMBER OF COLUMNS  (DIMENSION 2)
+                parsed = numpy.frombuffer(data,dtype = numpy.uint8, offset = 16)  # READ THE PIXEL VALUES AS INTEGERS
+                parsed = parsed.reshape(length,num_rows,num_cols)  # RESHAPE THE ARRAY AS [NO_OF_SAMPLES x HEIGHT x WIDTH]           
+            elif(type == 2049):
+                category = 'labels'
+                parsed = numpy.frombuffer(data, dtype=numpy.uint8, offset=8) # READ THE LABEL VALUES AS INTEGERS
+                parsed = parsed.reshape(length)  # RESHAPE THE ARRAY AS [NO_OF_SAMPLES]                           
+            if (length==10000):
+                set = 'test'
+            elif (length==60000):
+                set = 'train'
+            data_dict[set+'_'+category] = parsed  # SAVE THE NUMPY ARRAY TO A CORRESPONDING KEY
+
+
+# In[7]:
+
+
+train_images = data_dict['train_images']
+print(train_images.shape)
+train_labels = data_dict['train_labels']
+print(train_labels.shape)
+test_images = data_dict['test_images']
+print(test_images.shape)
+test_labels = data_dict['test_labels']
+print(test_labels.shape)
+
+
+# In[21]:
+
+
+print(train_labels[0])
+
+
+# In[61]:
+
+
+import numpy as np
+import array
+
+np.seterr(divide='ignore', invalid='ignore')
+
+picture_size = 784
+hidden_layer_size = 32
+output_layer_size = 10
+batch_size = 100
+
+# Сургах зурагны хэмжээ
+train_image_size = 60000
+# Divisor нь 0-1 н хооронд болгохын тулд үржиж байгаа тоо.
+divisor = 1/255
+print("Starting ...")
+# Энд train_images гэсэн энгийн array - г numpy-ын array болгож байна. 
+np.array(train_images)
+np.array(train_labels)
+np.array(test_images)
+np.array(test_labels)
+# Харин энд зураг тус бүрийг 0-1 хооронд байхаар pixel бүрээр үржиж байна гэсэн үг.
+c_train_image = train_images*(divisor)
+c_test_image = test_images*(divisor)
+
+print("train image shape:")
+print(c_train_image.shape);
+print("test image shape:")
+print(c_test_image.shape);
+
+# За энд hidden layer-н W болон B уудыг random - р үүсгэж байна.
+layer1_weight = np.random.randn(picture_size,hidden_layer_size)*0.01
+print("Layer1 shape:")
+print(layer1_weight.shape)
+print("Layer1 weight:")
+print(layer1_weight)
+layer1_bias = np.random.randn(hidden_layer_size)
+print("Layer1 bias shape:")
+print(layer1_bias.shape)
+print("Layer1 bias:")
+print(layer1_bias)
+
+# За энд гаралтын layer -н W болон B уудыг random - р үүсгэж байна.
+layer2_weight = np.random.randn(hidden_layer_size,output_layer_size)*0.01
+print("Layer2 weight shape:")
+print(layer2_weight.shape)
+print("Layer2 weight:")
+print(layer2_weight)
+layer2_bias = np.random.randn(output_layer_size)
+print("Layer2 bias shape:")
+print(layer2_bias.shape)
+print("Layer2 bias:")
+print(layer2_bias)
+
+# Энд (60000,28,28) хэмжээтэй зураг аа (60000,784) хэмжээтэй вектор болгож байна.
+cv_train_image = np.reshape(c_train_image,(60000,784))
+print("Сургах өгөгдлөө вектор болгох нь:")
+print(cv_train_image.shape)
+cv_test_image = np.reshape(c_test_image,(10000,784))
+print("Турших өгөгдөл өө вектор болгох нь:")
+print(cv_test_image.shape)
+
+# Энд batch_size сонгож авах хэсгийг хийж байна.
+#cv_train_image
+
+print("train_image size:")
+print(cv_train_image.shape[0])
+print("******************************************************************************************************************")
+def softmax(x):
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum(axis=0) # only difference
+
+# def softmax(inputs):
+#     return np.exp(inputs) / float(sum(np.exp(inputs)))
+
+def relu(x):
+    return np.maximum(0,x)
+
+
+i = 0
+batch_size = 100
+
+for index in range(0,6000,batch_size):
+    batch=cv_train_image[index:min(index+batch_size,cv_train_image.shape[0]),:]
+    for i in range(batch_size):
+        layer1 = np.add(batch@layer1_weight,layer1_bias)
+        layer1 = relu(layer1)
+        layer2 = np.add(layer1@layer2_weight,layer2_bias)
+        layer2 = softmax(layer2)
+        grad = softmax(layer2)
+        layer2 = softmax(layer2)
+        loss = -np.log(layer2[range(batch_size),train_labels[i]])
+        print("loss:",loss)
+        loss_sum = np.sum(loss)/batch_size
+        print("Loss_sum:",loss_sum)
+        grad[range(batch_size),train_labels]
+
+# log_likelihood = -np.log(layer1[range(layer1_size),true_label])
+# loss = np.sum(log_likelihood)/layer1_size
+# print("Loss:")
+# print(loss)
+# print("Softmax avsni daraa:")
+# print(softmax(layer1))
+
+
+# print("Cross entropy is :")
+# print(cross_entropy(layer1,train_labels))
+
+# print("Delta cross entropy:")
+# print(delta_cross_entropy(layer1,train_labels))
+
+# layer2 = np.add(layer1@layer2_weight,layer2_bias)
+# print("Layer2 shape is:")
+# print(layer2.shape)
+# print("Layer2 is:")
+# print(layer2)
+# print("Softmax:")
+# print(softmax(layer2))
+
+
+
+# def training(w1,b1,w2,b2,image):
+#     layer1 = image@w1+b1
+#     layer2 = layer1@w2 + b2
+#     layer2 = ReLU(layer2)
+#     return softmax(layer2)
+
+# training(layer1_weight,layer1_bias,layer1_weight,layer2_bias,one)
+
+# Оролт=>w1,b1=>relu=>w2,b2=>softmax=>гаралт
+
+# def cut_data(batch_size,cv_train_image):
+
+
+# In[59]:
+
+
+war = np.random.randn(100,10)
+print(war[0])
+print(war[1])
+print(war[2])
+wer = np.random.randn(100)
+print("za hevleeey")
+print(war[range(10),1])
+# layer2[range(batch_size),train_labels])
+
+
+# In[54]:
+
+
+batch_size = 100
+
+for index in range(0,cv_train_image.shape[0],batch_size):
+    batch=cv_train_image[index:min(index+batch_size,cv_train_image.shape[0]),:]
+    print(batch.shape)
+
+# import numpy as np
+# data=np.random.rand(550,10)
+# batch_size=100
+
+# for index in range(0,data.shape[0],batch_size):
+#     batch=data[index:min(index+batch_size,data.shape[0]),:]
+#     print(batch.shape)
+    
+# print(data[min(5,9),:])    
+# for i in range(0,550,100):
+#     batch = data[i:min(i+100,550),:]
+#     print(batch.shape)
+
+
+# In[14]:
+
+
+
+
+import matplotlib.pyplot as plt
+import numpy as np
+import matplotlib.mlab as mlab
+import math
+
+mu = 1
+variance = 1
+sigma = math.sqrt(variance)
+x = np.linspace(mu - 1*sigma, mu + 1*sigma, 100)
+plt.plot(x,mlab.normpdf(x, mu, sigma))
+plt.show()
+
+
+# In[79]:
+
+
+import numpy as np
+ta = [58.43540903, 53.02501388, 57.71778442, 58.92268745, 56.44606285, 52.66033093,
+ 53.63167502, 58.72545242, 57.41629934, 52.45535283, 64.04863599, 55.95392181,
+ 55.36780029, 54.13148496, 51.61374528, 53.93820959]
+def softmax(x):
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum(axis=0) # only difference
+print(ta)
+print("Softmax ashiglasni daraa:")
+print(softmax(ta))
+for i in range(0,16):
+    ta[i] = ta[i] * 0.1
+print("************************************************************************************")
+print(ta)
+print("Softmax ashiglasni daraa:")
+print(softmax(ta))
+
+
+# In[30]:
+
+
+import pickle
+
+datapath = '../../Data/MNISTData/'
+
+# DUMPING THE DICTIONARY INTO A PICKLE 
+with open(datapath+'MNISTData.pkl', 'wb') as fp :
+    pickle.dump(data_dict, fp)
+
+# LOADING THE DICTIONARY FROM A PICKLE
+with open(datapath+'MNISTData.pkl', 'rb') as fp :
+    new_dict = pickle.load(fp)
+
